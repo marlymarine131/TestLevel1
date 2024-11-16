@@ -7,8 +7,8 @@ public class Path : MonoBehaviour
     public Point pointA, pointB;
     public float length;
     private LineRenderer lineRenderer;
-    [SerializeField] private int curveResolution = 20; // Number of points for the curve
-    [SerializeField] private float curveOffset = 2f;   // Offset distance for the curve
+    [SerializeField] private int curveResolution = 50; // Number of points for the curve
+    [SerializeField] private float curveOffset = 0.5f;   // Offset distance for the curve
 
     // Khởi tạo đoạn đường giữa hai điểm
     public void Initialize(Point start, Point end)

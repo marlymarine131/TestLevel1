@@ -88,6 +88,10 @@ public class Path : MonoBehaviour
     {
         return pointA == point || pointB == point;
     }
+    public bool ContainPointBetween(Point from, Point to)
+    {
+        return (from == pointA && to == pointB) || (from == pointB && to == pointA); 
+    }
 
     // Lấy điểm còn lại khi cho một điểm
     public Point GetOtherPoint(Point point)

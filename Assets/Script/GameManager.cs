@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -39,8 +40,7 @@ public class GameManager : MonoBehaviour
         public string endName;
     }
 
-    // Hàm gọi FixedUpdate thay vì Update
-    private void Update()
+    private void FixedUpdate()
     {
         if (Input.GetMouseButtonDown(0)) // Tạo node
         {
@@ -172,33 +172,38 @@ public class GameManager : MonoBehaviour
     // Xe bắt đầu di chuyển
     private void StartCarsMovement()
     {
-        if ((secondStartNode != null || firstStartNode) && endNode != null)
+        if ((secondStartNode != null || firstStartNode!= null) && endNode != null)
         {
             // Tìm đường đi ngắn nhất sử dụng Dijkstra
-            DijkstraPathFinding dijkstra = new DijkstraPathFinding(nodes, paths);
-
+            //DijkstraPathFinding dijkstra = new DijkstraPathFinding(nodes, paths);
+            BreadthFirstSearch breadthFirstSearch = new BreadthFirstSearch(nodes,paths);
             if (carController != null)
             {
-                List<Path> shortestPath = dijkstra.FindShortestPath(firstStartNode, endNode);
-                MoveCar(shortestPath, carController, Color.yellow);
+                List<Path> shortestPath = breadthFirstSearch.FindShortestPath(firstStartNode, endNode);
+                StartCoroutine( MoveCar(shortestPath, carController, Color.yellow));
             }
 
             if (secondCarController != null)
             {
-                List<Path> shortestPath = dijkstra.FindShortestPath(secondStartNode, endNode);
-                MoveCar(shortestPath, secondCarController, Color.red);
+                List<Path> shortestPath = breadthFirstSearch.FindShortestPath(secondStartNode, endNode);
+
+                StartCoroutine(MoveCar(shortestPath, secondCarController, Color.red));
             }
         }
     }
 
     // Di chuyển xe theo đường đi ngắn nhất
-    private void MoveCar(List<Path> shortestPath, CarController car, Color color)
+    private IEnumerator MoveCar(List<Path> shortestPath, CarController car, Color color)
     {
-        car.SetPath(shortestPath, targetTime);
-        foreach (Path path in shortestPath)
+        if (shortestPath != null)
         {
-            path.HighlightPath(color); // Đổi màu các đường đi ngắn nhất
+            car.SetPath(shortestPath, targetTime);
+            foreach (Path path in shortestPath)
+            {
+                path.HighlightPath(color); // Đổi màu các đường đi ngắn nhất
+            }
         }
+        yield return null;
     }
 
     // Hàm lấy vị trí con trỏ chuột trên mặt phẳng 3D

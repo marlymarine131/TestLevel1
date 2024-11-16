@@ -6,15 +6,20 @@ public class GameManager : MonoBehaviour
 {
     [SerializeField] private GameObject nodePrefab;
     [SerializeField] private GameObject linePrefab;
-    [SerializeField] private GameObject carPrefab;
+    [SerializeField] private GameObject carPrefab;  // First car prefab
+    [SerializeField] private GameObject secondCarPrefab;  // Second car prefab
+    [SerializeField] private float targetTime = 5f;
 
     private List<Point> nodes = new List<Point>();
     private List<Path> paths = new List<Path>(); // Danh sách các đoạn đường
     private Point selectedNode = null;
-    private Point startNode = null;
+    private Point fistStartNode = null;
+    private Point secondStartNode = null;
     private Point endNode = null;
     private GameObject carInstance;
     private CarController carController;
+    private GameObject secondCarInstance;
+    private CarController secondCarController;
     private int nodeID = 0;
 
     void Update()
@@ -55,21 +60,46 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
-        else if (Input.GetKeyDown(KeyCode.F)) // Chọn điểm bắt đầu
+        else if (Input.GetKeyDown(KeyCode.F)) // Chọn điểm bắt đầu cho xe đầu tiên
         {
-            startNode = GetNodeAtMousePosition();
-            Debug.Log("Start Node: " + (startNode != null ? startNode.name : "None"));
+            fistStartNode = GetNodeAtMousePosition();
+            Debug.Log("Start Node: " + (fistStartNode != null ? fistStartNode.name : "None"));
 
-            if (startNode != null)
+            if (fistStartNode != null)
             {
                 if (carInstance == null)
                 {
-                    carInstance = Instantiate(carPrefab, startNode.transform.position, Quaternion.identity);
+                    carInstance = Instantiate(carPrefab, fistStartNode.transform.position, Quaternion.identity);
                     carController = carInstance.GetComponent<CarController>();
                 }
                 else
                 {
-                    carInstance.transform.position = startNode.transform.position;
+                    carInstance.transform.position = fistStartNode.transform.position;
+                }
+            }
+        }
+        else if (Input.GetKeyDown(KeyCode.M)) // Chọn điểm bắt đầu cho xe thứ hai tại một điểm khác
+        {
+            secondStartNode = GetNodeAtMousePosition();
+            if (secondStartNode == null)
+            {
+                Debug.Log("No second car start node selected. Defaulting to a random node.");
+                // Assign second car to a random point if no node selected
+                secondStartNode = nodes[Random.Range(0, nodes.Count)];
+            }
+
+            Debug.Log("Start Node for second car: " + (secondStartNode != null ? secondStartNode.name : "None"));
+
+            if (secondStartNode != null)
+            {
+                if (secondCarInstance == null)
+                {
+                    secondCarInstance = Instantiate(secondCarPrefab, secondStartNode.transform.position, Quaternion.identity);
+                    secondCarController = secondCarInstance.GetComponent<CarController>();
+                }
+                else
+                {
+                    secondCarInstance.transform.position = secondStartNode.transform.position;
                 }
             }
         }
@@ -78,38 +108,37 @@ public class GameManager : MonoBehaviour
             endNode = GetNodeAtMousePosition();
             Debug.Log("End Node: " + (endNode != null ? endNode.name : "None"));
         }
-        // Xe bắt đầu chạy
         else if (Input.GetKeyDown(KeyCode.Space)) // Xe bắt đầu chạy
         {
-            if (startNode != null && endNode != null)
+            if ((secondStartNode != null || fistStartNode) && endNode != null)
             {
                 // Tìm đường đi ngắn nhất sử dụng Dijkstra
                 DijkstraPathFinding dijkstra = new DijkstraPathFinding(nodes, paths);
-                List<Path> shortestPath = dijkstra.FindShortestPath(startNode, endNode);
-                string pathRoad = "";
-                foreach (var path in shortestPath)
+                if (carController != null)
                 {
-                    pathRoad += path.pointA + "-" + path.pointB + ";";
+                    List<Path> shortestPath = dijkstra.FindShortestPath(fistStartNode, endNode);
+                    moveCar(shortestPath,carController,Color.yellow);
                 }
-                Debug.Log(pathRoad);
-                if (shortestPath != null && carController != null)
-                {
-                    carController.SetPath(shortestPath);
 
-                    // Đổi màu các Path trên đường đi thành màu vàng
-                    foreach (Path path in shortestPath)
-                    {
-                        path.HighlightPath(Color.yellow); // Đổi màu các đường đi ngắn nhất
-                    }
-                }
-                else
+                if (secondCarController != null)
                 {
-                    Debug.Log("No path found or car not initialized.");
+                    List<Path> shortestPath = dijkstra.FindShortestPath(secondStartNode, endNode);
+                    moveCar(shortestPath, secondCarController, Color.red);
                 }
+
             }
         }
     }
 
+
+    private void moveCar(List<Path> shortestPath, CarController car, Color color)
+    {
+        car.SetPath(shortestPath, targetTime);
+        foreach (Path path in shortestPath)
+        {
+            path.HighlightPath(color); // Đổi màu các đường đi ngắn nhất
+        }
+    }
     // Hàm lấy vị trí con trỏ chuột trên mặt phẳng 3D
     private Vector3 GetMousePosition()
     {

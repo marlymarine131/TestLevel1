@@ -14,14 +14,13 @@ public class Path : MonoBehaviour
         pointA = start;
         pointB = end;
         length = Vector3.Distance(pointA.transform.position, pointB.transform.position);
-
-        lineRenderer = gameObject.AddComponent<LineRenderer>();
+        lineRenderer = GetComponent<LineRenderer>();
         lineRenderer.positionCount = 2;
         lineRenderer.SetPositions(new Vector3[] { pointA.transform.position, pointB.transform.position });
 
         pointA.Connect(pointB); // Kết nối hai điểm
 
-        SetLineWidth(0.02f);
+        SetLineWidth(0.2f);
     }
 
     // Cài đặt độ rộng của đoạn đường
@@ -71,6 +70,14 @@ public class Path : MonoBehaviour
         else
         {
             return pointA.transform.position;
+        }
+    }
+    public void ResetColor()
+    {
+        if (lineRenderer != null)
+        {
+            lineRenderer.startColor = Color.white;
+            lineRenderer.endColor = Color.white;
         }
     }
 }

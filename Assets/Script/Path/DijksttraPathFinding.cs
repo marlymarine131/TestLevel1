@@ -5,7 +5,7 @@ public class DijkstraPathFinding
 {
     private List<Point> nodes;
     private List<Path> paths;
-
+   
     public DijkstraPathFinding(List<Point> nodes, List<Path> paths)
     {
         this.nodes = nodes;

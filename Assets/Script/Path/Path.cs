@@ -7,6 +7,8 @@ public class Path : MonoBehaviour
     public Point pointA, pointB;
     public float length;
     private LineRenderer lineRenderer;
+    [SerializeField] private int curveResolution = 20; // Number of points for the curve
+    [SerializeField] private float curveOffset = 2f;   // Offset distance for the curve
 
     // Khởi tạo đoạn đường giữa hai điểm
     public void Initialize(Point start, Point end)
@@ -15,12 +17,50 @@ public class Path : MonoBehaviour
         pointB = end;
         length = Vector3.Distance(pointA.transform.position, pointB.transform.position);
         lineRenderer = GetComponent<LineRenderer>();
-        lineRenderer.positionCount = 2;
-        lineRenderer.SetPositions(new Vector3[] { pointA.transform.position, pointB.transform.position });
+
+        DrawCurvedLine();
 
         pointA.Connect(pointB); // Kết nối hai điểm
 
         SetLineWidth(0.2f);
+    }
+    public List<Vector3> GetCurvePoints()
+    {
+        // Lấy các điểm trên đường cong
+        Vector3 startPos = pointA.transform.position;
+        Vector3 endPos = pointB.transform.position;
+
+        // Tính toán các điểm điều khiển
+        Vector3 direction = (endPos - startPos).normalized;
+        Vector3 perpendicular = new Vector3(-direction.z, 0, direction.x); // Vectơ vuông góc với mặt đất
+
+        Vector3 controlPointA = startPos + direction * 0.2f * length + perpendicular * curveOffset;
+        Vector3 controlPointB = endPos - direction * 0.2f * length + perpendicular * curveOffset;
+
+        // Tính toán đường cong Bezier
+        return new List<Vector3>(CalculateBezierCurve(startPos, controlPointA, controlPointB, endPos, curveResolution));
+    }
+
+    // Vẽ đường cong giữa hai điểm
+    private void DrawCurvedLine()
+    {
+        if (lineRenderer == null) return;
+
+        Vector3 startPos = pointA.transform.position;
+        Vector3 endPos = pointB.transform.position;
+
+        // Calculate control points near the endpoints
+        Vector3 direction = (endPos - startPos).normalized;
+        Vector3 perpendicular = new Vector3(-direction.z, 0, direction.x); // Perpendicular vector on XZ plane
+
+        Vector3 controlPointA = startPos + direction * 0.2f * length + perpendicular * curveOffset;
+        Vector3 controlPointB = endPos - direction * 0.2f * length + perpendicular * curveOffset;
+
+        // Generate points for the curve
+        Vector3[] curvePoints = CalculateBezierCurve(startPos, controlPointA, controlPointB, endPos, curveResolution);
+
+        lineRenderer.positionCount = curvePoints.Length;
+        lineRenderer.SetPositions(curvePoints);
     }
 
     // Cài đặt độ rộng của đoạn đường
@@ -72,6 +112,7 @@ public class Path : MonoBehaviour
             return pointA.transform.position;
         }
     }
+
     public void ResetColor()
     {
         if (lineRenderer != null)
@@ -79,5 +120,20 @@ public class Path : MonoBehaviour
             lineRenderer.startColor = Color.white;
             lineRenderer.endColor = Color.white;
         }
+    }
+
+    // Tính toán đường cong Bezier bậc ba
+    private Vector3[] CalculateBezierCurve(Vector3 start, Vector3 controlA, Vector3 controlB, Vector3 end, int resolution)
+    {
+        Vector3[] points = new Vector3[resolution + 1];
+        for (int i = 0; i <= resolution; i++)
+        {
+            float t = i / (float)resolution;
+            points[i] = Mathf.Pow(1 - t, 3) * start +
+                        3 * Mathf.Pow(1 - t, 2) * t * controlA +
+                        3 * (1 - t) * Mathf.Pow(t, 2) * controlB +
+                        Mathf.Pow(t, 3) * end;
+        }
+        return points;
     }
 }

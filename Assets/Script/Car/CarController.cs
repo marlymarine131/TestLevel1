@@ -38,46 +38,61 @@ public class CarController : MonoBehaviour
     private IEnumerator FollowPath(float targetTime)
     {
         isMoving = true;
-        int pathIndex = 1; // Start numbering paths from 1
+        int pathIndex = 1; // Bắt đầu đánh số từ 1
+        float distance = allPaths.Sum(q => q.length); // Tính tổng chiều dài của tất cả các path
 
-        float sumDistances = allPaths.Sum(q => q.length);
         while (pathQueue.Count > 0)
         {
-            Path currentPath = pathQueue.Peek(); // Check the first item without dequeuing yet
+            Path currentPath = pathQueue.Peek(); // Lấy path đầu tiên trong hàng đợi mà chưa dequeue
 
-            // Determine the direction and target position based on the current path
-            Vector3 targetPosition = currentPath.GetTargetPosition(transform.position);
+            // Lấy các điểm trên đường cong của path hiện tại
+            List<Vector3> curvePoints = currentPath.GetCurvePoints();
 
-            // Calculate the required speed based on the distance and time
-            float requiredSpeed = sumDistances / targetTime;
+            // Kiểm tra hướng di chuyển, từ điểm gần nhất tới điểm còn lại
+            Vector3 currentPos = transform.position;
+            Vector3 targetPosition = curvePoints.First(); // Mặc định bắt đầu di chuyển tới điểm đầu tiên của đường cong
 
-            // Debugging path index and target name
-            Debug.Log("Path " + pathIndex + " Target Position: " + currentPath.name);
-
-            // Move towards the target position
-            while (Vector3.Distance(transform.position, targetPosition) > 0.1f)
+            // Nếu xe đang ở gần điểm cuối, đảo ngược hướng di chuyển
+            if (Vector3.Distance(currentPos, curvePoints.Last()) < Vector3.Distance(currentPos, targetPosition))
             {
-                Vector3 direction = (targetPosition - transform.position).normalized;
-                Vector3 move = direction * requiredSpeed * Time.deltaTime;
-
-                carBody.MovePosition(transform.position + move);
-                yield return null;
+                // Xe di chuyển từ điểm cuối đến điểm đầu của đường cong
+                curvePoints.Reverse(); // Đảo ngược danh sách điểm đường cong
             }
 
-            // Once we reach the target position, dequeue and move to the next path
-            Debug.Log("Reached Target Position: " + targetPosition + " (Path " + pathIndex + ")");
-            pathQueue.Dequeue(); // Remove the current path from the queue
+            // Di chuyển xe qua các điểm này
+            foreach (Vector3 point in curvePoints)
+            {
+                // Tính toán tốc độ di chuyển
+                float requiredSpeed = distance / targetTime;
 
-            // Increment path index for the next path
+                // Di chuyển đến điểm mục tiêu
+                while (Vector3.Distance(transform.position, point) > 0.1f)
+                {
+                    Vector3 direction = (point - transform.position).normalized;
+                    Vector3 move = direction * requiredSpeed * Time.deltaTime;
+
+                    carBody.MovePosition(transform.position + move);
+                    yield return null;
+                }
+            }
+
+            // Khi đã đi hết tất cả các điểm trên path hiện tại, dequeue và tiếp tục với path tiếp theo
+            Debug.Log("Reached Target Position: " + curvePoints.Last() + " (Path " + pathIndex + ")");
+            pathQueue.Dequeue();
+
+            // Tăng chỉ số path
             pathIndex++;
         }
 
-        // Reset colors of all paths to white after car reaches the end
+        // Reset màu sắc của tất cả các path sau khi xe đã di chuyển xong
         foreach (Path path in allPaths)
         {
-            path.ResetColor(); // Reset color of each path
+            path.ResetColor(); // Reset màu sắc của mỗi path
         }
 
         isMoving = false;
     }
+
+
+
 }

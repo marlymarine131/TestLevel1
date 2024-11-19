@@ -11,6 +11,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private GameObject secondCarPrefab;  // Second car prefab
     [SerializeField] private float targetTime = 5f;
 
+    private HashSet<Point> curvedPoints = new HashSet<Point>();
     private List<Point> nodes = new List<Point>();
     private List<Path> paths = new List<Path>(); // Danh sách các đoạn đường
     private Point selectedNode = null;
@@ -40,7 +41,7 @@ public class GameManager : MonoBehaviour
         public string endName;
     }
 
-    private void FixedUpdate()
+    private void Update()
     {
         if (Input.GetMouseButtonDown(0)) // Tạo node
         {
@@ -108,7 +109,39 @@ public class GameManager : MonoBehaviour
     {
         GameObject lineObj = Instantiate(linePrefab);
         Path line = lineObj.AddComponent<Path>();
+        Point overlapPoint = new Point();
         line.Initialize(startNode, endNode);
+
+        foreach (var path in paths)
+        {
+            if (line.pointA.transform.position == path.pointA.transform.position || line.pointB.transform.position == path.pointA.transform.position)
+            {
+                overlapPoint = path.pointA; // Gán path trùng vào overlapPoint
+                var pathPoint = path.pointB;
+                var linePoint = (line.pointA == overlapPoint) ? line.pointA : line.pointB;
+                Vector3 targetPoint = (line.pointA == overlapPoint) ? line.pointB.transform.position : line.pointA.transform.position;
+
+                line.DrawHalfParabolicLine(overlapPoint.transform.position, targetPoint);
+                curvedPoints.Add(overlapPoint);
+            }
+            else if (line.pointA.transform.position == path.pointB.transform.position || line.pointB.transform.position == path.pointB.transform.position)
+            {
+                overlapPoint = path.pointB; // Gán path trùng vào overlapPoint
+                var pathPoint = path.pointB;
+                var linePoint = (line.pointA == overlapPoint) ? line.pointA : line.pointB;
+                Vector3 targetPoint = (line.pointA == overlapPoint) ? line.pointB.transform.position : line.pointA.transform.position;
+                Vector3 targetPointPrevious = (path.pointA == overlapPoint) ? path.pointB.transform.position : path.pointA.transform.position;
+                line.DrawHalfParabolicLine(overlapPoint.transform.position, targetPoint);
+                curvedPoints.Add(overlapPoint);
+                if (!curvedPoints.Contains(overlapPoint))
+                {
+                    path.DrawHalfParabolicLine(overlapPoint.transform.position, targetPointPrevious);
+                }
+
+            }
+        }
+
+        Debug.Log("Over Lap at Point: " + overlapPoint);
         paths.Add(line); // Thêm Path vào danh sách
     }
 
@@ -172,15 +205,15 @@ public class GameManager : MonoBehaviour
     // Xe bắt đầu di chuyển
     private void StartCarsMovement()
     {
-        if ((secondStartNode != null || firstStartNode!= null) && endNode != null)
+        if ((secondStartNode != null || firstStartNode != null) && endNode != null)
         {
             // Tìm đường đi ngắn nhất sử dụng Dijkstra
             //DijkstraPathFinding dijkstra = new DijkstraPathFinding(nodes, paths);
-            BreadthFirstSearch breadthFirstSearch = new BreadthFirstSearch(nodes,paths);
+            BreadthFirstSearch breadthFirstSearch = new BreadthFirstSearch(nodes, paths);
             if (carController != null)
             {
                 List<Path> shortestPath = breadthFirstSearch.FindShortestPath(firstStartNode, endNode);
-                StartCoroutine( MoveCar(shortestPath, carController, Color.yellow));
+                StartCoroutine(MoveCar(shortestPath, carController, Color.yellow));
             }
 
             if (secondCarController != null)

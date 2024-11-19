@@ -46,7 +46,7 @@ public class CarController : MonoBehaviour
             Path currentPath = pathQueue.Peek(); // Lấy path đầu tiên trong hàng đợi mà chưa dequeue
 
             // Lấy các điểm trên đường cong của path hiện tại
-            List<Vector3> curvePoints = currentPath.GetCurvePoints();
+            List<Vector3> curvePoints = currentPath.GetCurvePoints(transform.position);
 
             // Kiểm tra hướng di chuyển, từ điểm gần nhất tới điểm còn lại
             Vector3 currentPos = transform.position;

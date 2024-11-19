@@ -27,4 +27,9 @@ public class Point : MonoBehaviour
     {
         return connectedNodes.Contains(point);
     }
+    //public bool IsConnectedToAny()
+    //{
+    //    return connectedPoints.Count > 0;
+    //}
+
 }

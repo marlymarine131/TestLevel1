@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class Path : MonoBehaviour
@@ -8,85 +6,61 @@ public class Path : MonoBehaviour
     public Point pointA, pointB;
     public float length;
     private LineRenderer lineRenderer;
-    [SerializeField] public int curveResolution = 20; // Số điểm trên đường cong
+    [SerializeField] public int curveResolution = 20; // Number of points on the curve
     [SerializeField] private float curveOffset = 1f;
-    public List<Vector3> curvePoints = new List<Vector3>(); // Danh sách các điểm trên đường cong
+    [SerializeField] private int segmentCount = 50;
+    [SerializeField] private int density = 50;
+
+    public List<Vector3> points = new List<Vector3>(); // List to store points on the path
     private bool isCurved;
     public float curvatureFactor = 1f;
 
-    // Khởi tạo đường nối giữa hai điểm
-    public void Initialize(Point start, Point end)
+    // Initialize path between two points
+    public void Initialize(Point start, Point end,MeshGenerator meshGenerator)
     {
         pointA = start;
         pointB = end;
-        length = Vector3.Distance(pointA.transform.position, pointB.transform.position);
-        lineRenderer = GetComponent<LineRenderer>();
-        lineRenderer.positionCount = 2;
-        lineRenderer.SetPositions(new Vector3[] { pointA.transform.position, pointB.transform.position });
-
-        pointA.Connect(pointB); // Kết nối hai điểm
-
-        SetLineWidth(0.2f);
-    }
-
-    // Lấy các điểm đường cong từ danh sách
-    public List<Vector3> GetCurvePoints(Vector3 startPoint)
-    {
-        if (!isCurved)
+        // Sinh các điểm trên đoạn thẳng
+        points = new List<Vector3>();
+        for (int i = 0; i <= segmentCount; i++)
         {
-            curvePoints.Add(GetTargetPosition(startPoint));
+            float t = i / (float)segmentCount;
+            Vector3 point = Vector3.Lerp(start.transform.position, end.transform.position, t);
+            points.Add(point);
         }
-        return curvePoints;
-    }
 
-    // Vẽ đường cong Bezier giữa hai điểm
-    public void DrawCurvedLine(Vector3 overlapPoint)
+        // Chiếu các điểm lên bề mặt Mesh
+        if (meshGenerator != null && meshGenerator.gameObject.activeSelf)
+        {
+            points = meshGenerator.ProjectPointsOntoMesh(points);
+        }
+
+        // Cập nhật LineRenderer
+        lineRenderer = GetComponent<LineRenderer>();
+        lineRenderer.positionCount = points.Count;
+        lineRenderer.SetPositions(points.ToArray());
+        pointA.Connect(pointB);
+        length = CalculateTotalLength(points);
+        SetLineWidth(0.2f);
+        
+    }
+    public List<Vector3> GetAllPointOfPath()
     {
-        if (lineRenderer == null) return;
-
-        Vector3 startPos = pointA.transform.position;
-        Vector3 endPos = pointB.transform.position;
-
-        // Tính toán hướng và vectơ vuông góc
-        Vector3 direction = (endPos - startPos).normalized;
-        Vector3 perpendicular = new Vector3(-direction.z, 0, direction.x); // Vuông góc trên mặt XZ
-
-        // Tạo điểm điều khiển dựa trên điểm overlap
-        // Điều chỉnh theo hệ số curvatureFactor để kiểm soát độ cong
-        Vector3 controlPoint = overlapPoint + perpendicular * curvatureFactor;
-
-        // Tính toán các điểm trên đường cong Bezier
-        curvePoints = new List<Vector3>(CalculateBezierCurve(startPos, controlPoint, endPos, curveResolution));
-
-        // Vẽ đường cong
-        lineRenderer.positionCount = curvePoints.Count;
-        lineRenderer.SetPositions(curvePoints.ToArray());
-        isCurved = true;
+        return points;
     }
-
-    // Vẽ nửa parabol giữa điểm overlap và điểm mục tiêu
-    public void DrawHalfParabolicLine(Vector3 overlapPoint, Vector3 targetPoint)
+    // Calculate the total length of the path
+    private float CalculateTotalLength(List<Vector3> points)
     {
-        if (lineRenderer == null) return;
-
-        // Tính vector từ overlapPoint đến targetPoint
-        Vector3 direction = (targetPoint - overlapPoint).normalized;
-        Vector3 perpendicular = new Vector3(-direction.z, 0, direction.x); // Vuông góc trên mặt XZ
-
-        // Tạo điểm điều khiển (control point) bằng cách dịch chuyển một chút theo hướng ngược lại
-        Vector3 controlPoint = overlapPoint + perpendicular;
-
-        // Tính toán các điểm trên nửa parabol
-        curvePoints = new List<Vector3>(CalculateParabola(overlapPoint, controlPoint, targetPoint, curveResolution));
-
-        // Vẽ nửa parabol
-        lineRenderer.positionCount = curvePoints.Count;
-        lineRenderer.SetPositions(curvePoints.ToArray());
-
-        isCurved = true;
+        Debug.Log(points.Count);
+        float totalLength = 0f;
+        for (int i = 1; i < points.Count; i++) // Start from the second point
+        {
+            totalLength += Vector3.Distance(points[i - 1], points[i]);
+        }
+        return totalLength;
     }
 
-    // Cài đặt độ rộng của đường
+    // Set the width of the path line
     public void SetLineWidth(float width)
     {
         if (lineRenderer != null)
@@ -96,7 +70,7 @@ public class Path : MonoBehaviour
         }
     }
 
-    // Làm nổi bật đoạn đường
+    // Highlight the path with a specified color
     public void HighlightPath(Color color)
     {
         if (lineRenderer != null)
@@ -106,39 +80,19 @@ public class Path : MonoBehaviour
         }
     }
 
-    // Kiểm tra nếu đoạn đường chứa một điểm nào đó
+    // Check if the path contains a specific point
     public bool ContainsPoint(Point point)
     {
         return pointA == point || pointB == point;
     }
 
+    // Check if the path contains a point between two others
     public bool ContainPointBetween(Point from, Point to)
     {
         return (from == pointA && to == pointB) || (from == pointB && to == pointA);
     }
 
-    // Lấy điểm còn lại khi cho một điểm
-    public Point GetOtherPoint(Point point)
-    {
-        return point == pointA ? pointB : pointA;
-    }
-
-    // Lấy vị trí mục tiêu
-    public Vector3 GetTargetPosition(Vector3 currentPosition)
-    {
-        float distanceToA = Vector3.Distance(currentPosition, pointA.transform.position);
-        float distanceToB = Vector3.Distance(currentPosition, pointB.transform.position);
-
-        if (distanceToA < distanceToB)
-        {
-            return pointB.transform.position;
-        }
-        else
-        {
-            return pointA.transform.position;
-        }
-    }
-
+    // Reset the color of the path
     public void ResetColor()
     {
         if (lineRenderer != null)
@@ -147,40 +101,4 @@ public class Path : MonoBehaviour
             lineRenderer.endColor = Color.white;
         }
     }
-
-    // Tính toán đường cong Bezier bậc ba
-    private List<Vector3> CalculateBezierCurve(Vector3 start, Vector3 control, Vector3 end, int resolution)
-    {
-        List<Vector3> points = new List<Vector3>();
-        for (int i = 0; i <= resolution; i++)
-        {
-            float t = i / (float)resolution;
-            Vector3 point = Mathf.Pow(1 - t, 2) * start +
-                            2 * (1 - t) * t * control +
-                            Mathf.Pow(t, 2) * end;
-            points.Add(point);
-        }
-        return points;
-    }
-
-    // Tính toán nửa parabol
-    private List<Vector3> CalculateParabola(Vector3 start, Vector3 vertex, Vector3 end, int resolution)
-    {
-        List<Vector3> points = new List<Vector3>();
-
-        // Tính toán chỉ nửa parabol
-        for (int i = 0; i <= resolution / 2; i++)
-        {
-            float t = i / (float)(resolution / 2); // t từ 0 đến 1 cho nửa đường cong
-
-            // Công thức parabol
-            Vector3 point = Mathf.Pow(1 - t, 2) * start +
-                            2 * (1 - t) * t * vertex +
-                            Mathf.Pow(t, 2) * end;
-            points.Add(point);
-        }
-
-        return points;
-    }
-
 }
